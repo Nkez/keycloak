@@ -14,13 +14,10 @@ import (
 
 func initConfig() {
 	var configPath string
-
 	flag.StringVar(&configPath, "cf", ".", "Path to the config file")
 	flag.Parse()
-
 	viper.SetConfigFile("config/config.yaml")
 	viper.AddConfigPath(configPath)
-
 	if err := viper.ReadInConfig(); err != nil {
 		panic(fmt.Sprintf("No valid config file is provided: %s", err.Error()))
 	}
@@ -32,7 +29,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
-
 	grpcServer := grpc.NewServer()
 	proto.RegisterUserServiceServer(
 		grpcServer,
