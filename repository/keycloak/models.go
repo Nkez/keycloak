@@ -1,6 +1,9 @@
 package keycloak
 
-import "keylock_test/proto"
+import (
+	"github.com/jmoiron/sqlx"
+	"keylock_test/proto"
+)
 
 type Keycloak struct {
 	proto.UnimplementedUserServiceServer
@@ -12,6 +15,7 @@ type Config struct {
 	AdminUsername string
 	AdminPassword string
 	KeycloakURI   string
+	DB            *sqlx.DB
 }
 
 type KcProvisionOpts struct {

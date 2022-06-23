@@ -5,9 +5,15 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/Nerzal/gocloak/v11"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"keylock_test/proto"
 	"strings"
+)
+
+const (
+	defaultPageSize = 10
 )
 
 func (c *Config) newKeycloakClient() gocloak.GoCloak {
@@ -45,7 +51,6 @@ func (c *Keycloak) Create(ctx context.Context, create *proto.CreateUser) (*empty
 			},
 		}
 	)
-
 	u, err := keyCloakClient.CreateUser(ctx, keyCloakToken.AccessToken, c.MasterRealm, user)
 	if err != nil {
 		return nil, err
@@ -65,28 +70,104 @@ func (c *Keycloak) Get(ctx context.Context, id *proto.GetUser) (*proto.User, err
 	if err != nil {
 		return nil, err
 	}
-
 	return keyCloakToGRPC(user), nil
 }
-func (c *Keycloak) List(ctx context.Context, empty *emptypb.Empty) (*proto.ListUser, error) {
-	keyCloakConfig := c.Config
-	keyCloakClient := keyCloakConfig.newKeycloakClient()
-	keyCloakToken, err := keyCloakConfig.newKeycloakToken(ctx, keyCloakClient)
-	if err != nil {
+
+type User struct {
+	ID        string `db:"id" json:"id"`
+	FirstName string `db:"first_name" json:"fn"`
+	LastName  string `db:"last_name" json:"last_name"`
+	Email     string `db:"email" json:"email"`
+	Username  string `db:"username" json:"username"`
+	Value     string `db:"string_agg" json:"vl"`
+}
+
+type UserInfo struct {
+	Phone   string
+	Country string
+}
+
+func (c *Keycloak) List(ctx context.Context, filter *proto.Filter) (*proto.ListUser, error) {
+	users := make([]User, 0, defaultPageSize)
+	query := `	select  ue.id ,ue.first_name  ,ue.last_name , ue.email , ue.username, string_agg(ua.value, ',')
+				FROM keycloak_role kr
+				JOIN user_role_mapping rm ON kr.id = rm.role_id
+				JOIN user_entity ue ON rm.user_id = ue.id
+				join user_attribute ua on ue.id  = ua.user_id`
+	query, args := decodeFilter(query, filter, c.DB)
+	query = fmt.Sprintf("%s and (ua.name = 'country' or ua.name = 'phone') group by ue.id", query)
+	query = paginateFilter(query, filter)
+	if err := c.DB.Select(&users, query, args...); err != nil {
 		return nil, err
 	}
-	users, err := keyCloakClient.GetUsers(ctx, keyCloakToken.AccessToken, c.MasterRealm, gocloak.GetUsersParams{})
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(users)
 	response := &proto.ListUser{
 		Users: make([]*proto.User, 0, len(users)),
 	}
 	for _, e := range users {
-		response.Users = append(response.Users, keyCloakToGRPC(e))
+		response.Users = append(response.Users, decodeToGRPC(&e))
 	}
 	return response, nil
+}
+
+func decodeToGRPC(user *User) *proto.User {
+	var p string
+	var c string
+	if user.Value != "," {
+		sl := strings.Split(user.Value, ",")
+		c = sl[0]
+		p = sl[1]
+	} else {
+		p = ""
+		c = ""
+	}
+	return &proto.User{
+		Id:          user.ID,
+		LastName:    user.LastName,
+		FirstName:   user.FirstName,
+		UserName:    user.Username,
+		Email:       user.Email,
+		MobilePhone: p,
+		Country:     c,
+	}
+}
+
+func decodeFilter(query string, filter *proto.Filter, db *sqlx.DB) (string, []interface{}) {
+	query = fmt.Sprintf("%s WHERE 1=1", query)
+	args := make([]interface{}, 0)
+	fmt.Println(filter.Role)
+	if filter.Role != "" {
+		query = fmt.Sprintf("%s AND kr.name = (?)", query)
+		args = append(args, filter.Role)
+	}
+	if filter.FirstName != "" {
+		query = fmt.Sprintf("%s AND ue.first_name = (?)", query)
+		args = append(args, &filter.FirstName)
+	}
+	if filter.SecondName != "" {
+		query = fmt.Sprintf("%s AND ue.last_name = (?)", query)
+		args = append(args, &filter.SecondName)
+	}
+	if filter.Email != "" {
+		query = fmt.Sprintf("%s AND ue.email = (?)", query)
+		args = append(args, &filter.Email)
+	}
+	query = db.Rebind(query)
+	return query, args
+}
+
+func paginateFilter(query string, filter *proto.Filter) string {
+	size := int64(defaultPageSize)
+	number := int64(1)
+	if filter.Size == 0 {
+		filter.Size = size
+	}
+	if filter.Page == 0 {
+		filter.Page = number
+	}
+	if filter.Page > int64(1) {
+		query = fmt.Sprintf("%s OFFSET %d", query, (filter.Page-1)*filter.Size)
+	}
+	return fmt.Sprintf("%s LIMIT %d", query, filter.Size)
 }
 
 func PString(value *string) string {

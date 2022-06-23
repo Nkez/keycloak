@@ -24,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
 	Get(ctx context.Context, in *GetUser, opts ...grpc.CallOption) (*User, error)
-	List(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ListUser, error)
+	List(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*ListUser, error)
 	Create(ctx context.Context, in *CreateUser, opts ...grpc.CallOption) (*empty.Empty, error)
 }
 
@@ -45,7 +45,7 @@ func (c *userServiceClient) Get(ctx context.Context, in *GetUser, opts ...grpc.C
 	return out, nil
 }
 
-func (c *userServiceClient) List(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ListUser, error) {
+func (c *userServiceClient) List(ctx context.Context, in *Filter, opts ...grpc.CallOption) (*ListUser, error) {
 	out := new(ListUser)
 	err := c.cc.Invoke(ctx, "/keycloak.UserService/List", in, out, opts...)
 	if err != nil {
@@ -68,7 +68,7 @@ func (c *userServiceClient) Create(ctx context.Context, in *CreateUser, opts ...
 // for forward compatibility
 type UserServiceServer interface {
 	Get(context.Context, *GetUser) (*User, error)
-	List(context.Context, *empty.Empty) (*ListUser, error)
+	List(context.Context, *Filter) (*ListUser, error)
 	Create(context.Context, *CreateUser) (*empty.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
@@ -80,7 +80,7 @@ type UnimplementedUserServiceServer struct {
 func (UnimplementedUserServiceServer) Get(context.Context, *GetUser) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedUserServiceServer) List(context.Context, *empty.Empty) (*ListUser, error) {
+func (UnimplementedUserServiceServer) List(context.Context, *Filter) (*ListUser, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedUserServiceServer) Create(context.Context, *CreateUser) (*empty.Empty, error) {
@@ -118,7 +118,7 @@ func _UserService_Get_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 func _UserService_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(Filter)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func _UserService_List_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: "/keycloak.UserService/List",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).List(ctx, req.(*empty.Empty))
+		return srv.(UserServiceServer).List(ctx, req.(*Filter))
 	}
 	return interceptor(ctx, in, info, handler)
 }

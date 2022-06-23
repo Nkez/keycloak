@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"keylock_test/proto"
 	"keylock_test/repository/keycloak"
+	"keylock_test/repository/postgres"
 	"log"
 	"net"
 )
@@ -29,6 +30,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
+	db, err := postgres.NewPostgresDB(viper.GetString("db"))
+	if err != nil {
+		log.Fatalf("failed to initialize db : %s", err.Error())
+	}
 	grpcServer := grpc.NewServer()
 	proto.RegisterUserServiceServer(
 		grpcServer,
@@ -39,6 +44,7 @@ func main() {
 					AdminUsername: viper.GetString("keycloak.username"),
 					AdminPassword: viper.GetString("keycloak.password"),
 					KeycloakURI:   viper.GetString("keycloak.uri"),
+					DB:            db,
 				},
 			},
 		))

@@ -5,3 +5,5 @@ keycloak:
   password: "admin"
 
 grpc: ":50051"
+
+db: "postgres://keycloak:123456@localhost:5433/keycloak?sslmode=disable"
