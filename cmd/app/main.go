@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	date_protobuf "github.com/Nkez/date-protobuf"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"keylock_test/proto"
 	"keylock_test/repository/keycloak"
 	"keylock_test/repository/postgres"
 	"log"
@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("failed to initialize db : %s", err.Error())
 	}
 	grpcServer := grpc.NewServer()
-	proto.RegisterUserServiceServer(
+	date_protobuf.RegisterUserServiceServer(
 		grpcServer,
 		keycloak.NewKcProvision(
 			&keycloak.KcProvisionOpts{

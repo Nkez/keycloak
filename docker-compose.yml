@@ -27,8 +27,10 @@ services:
       DB_PASSWORD: 123456
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: admin
-
     ports:
       - 8080:8080
     depends_on:
       - postgres
+
+
+

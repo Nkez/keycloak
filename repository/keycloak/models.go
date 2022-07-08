@@ -1,12 +1,12 @@
 package keycloak
 
 import (
+	date_protobuf "github.com/Nkez/date-protobuf"
 	"github.com/jmoiron/sqlx"
-	"keylock_test/proto"
 )
 
 type Keycloak struct {
-	proto.UnimplementedUserServiceServer
+	date_protobuf.UnimplementedUserServiceServer
 	Config
 }
 
